@@ -47,6 +47,14 @@ jobs:
           path: test-results/junit-api.xml
           retention-days: 14
 
+      - name: Upload API warnings artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-warnings
+          path: test-results/api-warnings.json
+          retention-days: 14
+
   # ── Job 2: Full browser E2E suite ────────────────────────────────────
   e2e-tests:
     name: E2E Tests (Chrome browser)
