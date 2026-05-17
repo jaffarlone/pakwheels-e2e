@@ -5,43 +5,76 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:          # allows "Run workflow" button in the Actions tab
+  workflow_dispatch:          # "Run workflow" button in the Actions tab
 
 jobs:
-  e2e:
-    name: Playwright – Chrome
+
+  # ── Job 1: HTTP-layer API tests (fast, no browser needed) ─────────────
+  api-tests:
+    name: API Tests (HTTP layer)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
 
     steps:
-      # ── Checkout ────────────────────────────────────────────────
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── Node ────────────────────────────────────────────────────
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      # ── Dependencies ────────────────────────────────────────────
       - name: Install npm dependencies
         run: npm ci
 
-      # ── Playwright browsers ─────────────────────────────────────
-      # Installs Chrome stable + all required OS-level dependencies
+      # API tests use Playwright's request fixture — no browser install needed
+      - name: Install Playwright (no browsers)
+        run: npx playwright install --with-deps chromium
+        # chromium needed only for the request fixture internals
+
+      - name: Run API tests
+        run: npx playwright test tests/api.spec.js --reporter=list,junit
+        env:
+          CI: true
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/junit-api.xml
+
+      - name: Upload API test JUnit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-api
+          path: test-results/junit-api.xml
+          retention-days: 14
+
+  # ── Job 2: Full browser E2E suite ────────────────────────────────────
+  e2e-tests:
+    name: E2E Tests (Chrome browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: api-tests          # only run if API layer is healthy
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
       - name: Install Playwright browsers
         run: npx playwright install chrome --with-deps
 
-      # ── Run tests ───────────────────────────────────────────────
-      - name: Run E2E test suite
-        run: npm test
+      - name: Run E2E test suite (all specs except api)
+        run: npx playwright test --ignore=tests/api.spec.js
         env:
           CI: true
 
-      # ── Artifacts ───────────────────────────────────────────────
-      # Always upload even when tests fail so you can inspect results
       - name: Upload Playwright HTML report
         uses: actions/upload-artifact@v4
         if: always()
@@ -54,7 +87,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: junit-xml
+          name: junit-e2e
           path: test-results/junit.xml
           retention-days: 14
 

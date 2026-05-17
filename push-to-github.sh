@@ -38,9 +38,14 @@ if git diff --cached --quiet; then
   echo "    Nothing new to commit — working tree clean."
 else
   echo "==> Committing..."
-  git commit -m "Add GitHub Actions CI workflow + locator refactor
+  git commit -m "Add API tests + split CI into two jobs
 
-- .github/workflows/e2e.yml: runs full Playwright suite on push/PR/manual trigger
+- tests/api.spec.js: 9 groups, 50+ HTTP-layer tests (status codes, headers,
+  body content, 404 handling, HTTP methods, security headers, response time,
+  HTTPS redirects, edge-case paths)
+- locators/api-endpoints.js: central URL registry for all API tests
+- .github/workflows/e2e.yml: two jobs — api-tests (fast, runs first) then
+  e2e-tests (Chrome browser, runs only if API layer is healthy)
 - Locators extracted to locators/ directory (used-cars, home, new-cars)
 - Page objects updated to import from locators/
 - Skippable sort & no-results tests fixed"
