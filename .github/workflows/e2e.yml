@@ -190,6 +190,58 @@ jobs:
           if [ -d "artifacts/api/html" ]; then (cd artifacts/api/html && zip -r ../../attachments/api-html.zip .); fi || true
           if [ -d "artifacts/e2e/html" ]; then (cd artifacts/e2e/html && zip -r ../../attachments/e2e-html.zip .); fi || true
 
+        - name: Generate short test summary
+        id: summary
+        run: |
+          python3 - <<'PY'
+    import xml.etree.ElementTree as ET, os
+    files = {'API':'artifacts/api/junit-api.xml','E2E':'artifacts/e2e/junit.xml'}
+    summary = {}
+    for k,f in files.items():
+      if os.path.exists(f):
+        try:
+          tree = ET.parse(f)
+          root = tree.getroot()
+          tests=failures=errors=skipped=0
+          if root.tag == 'testsuites':
+            for ts in root.findall('testsuite'):
+              tests += int(ts.attrib.get('tests',0))
+              failures += int(ts.attrib.get('failures',0))
+              errors += int(ts.attrib.get('errors',0))
+              skipped += int(ts.attrib.get('skipped',0) or 0)
+          elif root.tag == 'testsuite':
+            ts = root
+            tests = int(ts.attrib.get('tests',0))
+            failures = int(ts.attrib.get('failures',0))
+            errors = int(ts.attrib.get('errors',0))
+            skipped = int(ts.attrib.get('skipped',0) or 0)
+          summary[k] = {'tests':tests,'failures':failures,'errors':errors,'skipped':skipped}
+        except Exception as e:
+          summary[k] = {'error': str(e)}
+      else:
+        summary[k] = {'missing': True}
+
+    lines = []
+    lines.append(f"Repository: {os.environ.get('GITHUB_REPOSITORY')}")
+    lines.append(f"Run: {os.environ.get('GITHUB_SERVER_URL')}/{os.environ.get('GITHUB_REPOSITORY')}/actions/runs/{os.environ.get('GITHUB_RUN_ID')}")
+    lines.append('')
+    for k in ('API','E2E'):
+      v = summary.get(k, {})
+      if v.get('missing'):
+        lines.append(f"{k}: No JUnit artifact found")
+      elif 'error' in v:
+        lines.append(f"{k}: Error parsing JUnit: {v['error']}")
+      else:
+        passed = v['tests'] - v['failures'] - v['errors'] - v['skipped']
+        lines.append(f"{k}: tests={v['tests']}, passed={passed}, failures={v['failures']}, errors={v['errors']}, skipped={v['skipped']}")
+
+    body = '\n'.join(lines)
+    with open(os.environ['GITHUB_OUTPUT'],'a') as out:
+      out.write('body<<EOF\n')
+      out.write(body + '\n')
+      out.write('EOF\n')
+    PY
+
       - name: Send combined report email
         uses: dawidd6/action-send-mail@v3
         with:
