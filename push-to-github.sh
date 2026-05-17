@@ -1,6 +1,6 @@
 #!/bin/bash
 # push-to-github.sh
-# Run once from the pakwheels-e2e folder to push the suite to GitHub.
+# Pushes (or re-pushes) the full suite — including GitHub Actions — to GitHub.
 # Usage: bash push-to-github.sh
 
 set -e
@@ -30,21 +30,20 @@ git branch -M main 2>/dev/null || true
 git config user.email "jaffar.lone@gmail.com"
 git config user.name "Jaafar"
 
-# ── Stage & commit ─────────────────────────────────
+# ── Stage everything (includes .github/workflows/) ─
 echo "==> Staging all files..."
 git add .
 
 if git diff --cached --quiet; then
   echo "    Nothing new to commit — working tree clean."
 else
-  echo "==> Creating initial commit..."
-  git commit -m "Initial commit – PakWheels E2E test suite
+  echo "==> Committing..."
+  git commit -m "Add GitHub Actions CI workflow + locator refactor
 
-- Playwright config targeting pakwheels.com
-- Page objects: UsedCarsPage, HomePage, NewCarsPage, ForumsPage
-- Locators extracted to locators/ directory
-- Test suites: used-cars, homepage, new-cars, forums
-- .gitignore for node_modules, test-results, allure output"
+- .github/workflows/e2e.yml: runs full Playwright suite on push/PR/manual trigger
+- Locators extracted to locators/ directory (used-cars, home, new-cars)
+- Page objects updated to import from locators/
+- Skippable sort & no-results tests fixed"
 fi
 
 # ── Remote ─────────────────────────────────────────
@@ -55,11 +54,16 @@ else
 fi
 
 # ── Push ───────────────────────────────────────────
-echo "==> Pushing to GitHub (you may be prompted for credentials)..."
-echo "    TIP: Use a Personal Access Token as your password."
-echo "         Generate one at: https://github.com/settings/tokens"
+echo ""
+echo "==> Pushing to GitHub..."
+echo "    When prompted for a password, use a Personal Access Token."
+echo "    Generate one at: https://github.com/settings/tokens"
+echo "    (classic token, 'repo' scope is enough)"
 echo ""
 git push -u origin main
 
 echo ""
-echo "✅ Done!  https://github.com/${GH_USER}/pakwheels-e2e"
+echo "✅ Pushed!  https://github.com/${GH_USER}/pakwheels-e2e"
+echo ""
+echo "🚀 GitHub Actions is now running your suite."
+echo "   Watch it live: https://github.com/${GH_USER}/pakwheels-e2e/actions"

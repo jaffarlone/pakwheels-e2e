@@ -1,0 +1,75 @@
+name: PakWheels E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:          # allows "Run workflow" button in the Actions tab
+
+jobs:
+  e2e:
+    name: Playwright – Chrome
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Node ────────────────────────────────────────────────────
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # ── Dependencies ────────────────────────────────────────────
+      - name: Install npm dependencies
+        run: npm ci
+
+      # ── Playwright browsers ─────────────────────────────────────
+      # Installs Chrome stable + all required OS-level dependencies
+      - name: Install Playwright browsers
+        run: npx playwright install chrome --with-deps
+
+      # ── Run tests ───────────────────────────────────────────────
+      - name: Run E2E test suite
+        run: npm test
+        env:
+          CI: true
+
+      # ── Artifacts ───────────────────────────────────────────────
+      # Always upload even when tests fail so you can inspect results
+      - name: Upload Playwright HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-html-report
+          path: test-results/html/
+          retention-days: 14
+
+      - name: Upload JUnit XML
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-xml
+          path: test-results/junit.xml
+          retention-days: 14
+
+      - name: Upload Allure results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results
+          path: allure-results/
+          retention-days: 14
+
+      - name: Upload failure screenshots & videos
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-artifacts
+          path: test-results/
+          retention-days: 7
