@@ -34,7 +34,7 @@ jobs:
         # chromium needed only for the request fixture internals
 
       - name: Run API tests
-        run: npx playwright test tests/api.spec.js --reporter=list,junit
+        run: npx playwright test tests/api.spec.js --reporter=list,junit,html
         env:
           CI: true
           PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/junit-api.xml
@@ -45,6 +45,16 @@ jobs:
         with:
           name: junit-api
           path: test-results/junit-api.xml
+          retention-days: 14
+
+      - name: Upload API HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-html-report-api
+          path: |
+            test-results/html/
+            playwright-report/
           retention-days: 14
 
       - name: Upload API warnings artifact
