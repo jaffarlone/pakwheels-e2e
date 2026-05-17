@@ -144,6 +144,13 @@ jobs:
     needs: [api-tests, e2e-tests]
     if: always()
     timeout-minutes: 10
+    env:
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      REPORT_EMAIL_TO: ${{ secrets.REPORT_EMAIL_TO }}
+      REPORT_EMAIL_FROM: ${{ secrets.REPORT_EMAIL_FROM }}
 
     steps:
       - name: Checkout (for run metadata)
@@ -243,25 +250,22 @@ jobs:
           PY
 
       - name: Send combined report email
+        if: ${{ env.SMTP_SERVER && env.SMTP_USERNAME && env.SMTP_PASSWORD && env.REPORT_EMAIL_TO && env.REPORT_EMAIL_FROM }}
         uses: dawidd6/action-send-mail@v3
         with:
-          server_address: ${{ secrets.SMTP_SERVER }}
-          server_port: ${{ secrets.SMTP_PORT }}
-          username: ${{ secrets.SMTP_USERNAME }}
-          password: ${{ secrets.SMTP_PASSWORD }}
+          server_address: ${{ env.SMTP_SERVER }}
+          server_port: ${{ env.SMTP_PORT }}
+          username: ${{ env.SMTP_USERNAME }}
+          password: ${{ env.SMTP_PASSWORD }}
           subject: "[${{ github.repository }}] Test report — run ${{ github.run_number }} (${{ github.ref_name }})"
-          body: |
-            Hello,
-
-            The API and E2E test jobs have completed for run ${{ github.run_number }}.
-
-            Artifacts attached: API JUnit, API warnings, E2E JUnit, and HTML reports (zipped).
-
-            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            Regards,
-            CI
-          to: ${{ secrets.REPORT_EMAIL_TO }}
-          from: ${{ secrets.REPORT_EMAIL_FROM }}
+          body: ${{ steps.summary.outputs.body }}
+          to: ${{ env.REPORT_EMAIL_TO }}
+          from: ${{ env.REPORT_EMAIL_FROM }}
           # Attach everything in artifacts/attachments
           attachments: artifacts/attachments/*
+
+      - name: Skip email (missing SMTP/report secrets)
+        if: ${{ !(env.SMTP_SERVER && env.SMTP_USERNAME && env.SMTP_PASSWORD && env.REPORT_EMAIL_TO && env.REPORT_EMAIL_FROM) }}
+        run: |
+          echo "Skipping email: required SMTP/reporting secrets are not set."
+          echo "Required secrets: SMTP_SERVER, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, REPORT_EMAIL_TO, REPORT_EMAIL_FROM"
