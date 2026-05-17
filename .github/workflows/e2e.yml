@@ -57,6 +57,18 @@ jobs:
             playwright-report/
           retention-days: 14
 
+      - name: Comment API HTML report link on PR
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            Playwright API HTML report has been uploaded as an artifact for this workflow run.
+
+            Download from: https://github.com/${{ github.repository }}/suites/${{ github.run_id }}/artifacts
+
       - name: Upload API warnings artifact
         uses: actions/upload-artifact@v4
         if: always()
