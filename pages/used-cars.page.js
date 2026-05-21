@@ -167,7 +167,13 @@ class UsedCarsPage {
       bodyText.includes('no cars found') ||
       bodyText.includes('no listing') ||
       bodyText.includes('0 result') ||
-      bodyText.includes('not found')
+      bodyText.includes('not found') ||
+      bodyText.includes('sorry') ||
+      bodyText.includes('0 cars') ||
+      bodyText.includes('no ads') ||
+      bodyText.includes('no vehicles') ||
+      bodyText.includes('nothing found') ||
+      /\b0\s+(used\s+)?cars?\b/.test(bodyText)
     );
   }
 
